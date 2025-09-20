@@ -1,0 +1,145 @@
+﻿@page "/"
+@using ShelteredDaughter.Models
+
+<PageTitle>Sheltered Daughter</PageTitle>
+
+<div class="game-container">
+    <div class="board">
+        <div class="exit">玄関</div>
+        <div class="divider divider-left"></div>
+        <div class="divider divider-right"></div>
+
+        @foreach (var p in Pieces)
+        {
+            <div class="piece @(p.ColorClass) @(Selected == p ? "selected" : "")"
+                 style="
+                        left:@(p.X* Cell)px;
+                        top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
+                        width:@(p.Width* Cell)px;
+                        height:@(p.Height* Cell)px;"
+                 @onclick="() => SelectPiece(p)">
+                @p.Name
+            </div>
+        }
+    </div>
+
+    <div class="controls">
+        <div><button @onclick="() => MoveSelected(0, -1)">↑</button></div>
+        <div class="controls-mid">
+            <button @onclick="() => MoveSelected(-1, 0)">←</button>
+            <button class="spacer" disabled></button>
+            <button @onclick="() => MoveSelected(1, 0)">→</button>
+        </div>
+        <div><button @onclick="() => MoveSelected(0, 1)">↓</button></div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="clear-message">@Message</div>
+}
+
+@code {
+    private const int Cell = 80;
+    private const int BoardWidth = 6;
+    private const int BoardHeight = 6; // 外部を含む
+    private const int WallThick = 6;   // ← 壁の可視分(ピクセル)
+
+    private List<Piece> Pieces = new();
+    private Piece? Selected;
+    private string Message = "";
+
+    protected override void OnInitialized()
+    {
+        // 駒名, X, Y, 幅, 高さ, 色
+        Pieces.Add(new Piece("父", 1, 0, 1, 2, "Color_父"));
+        Pieces.Add(new Piece("娘", 2, 0, 2, 2, "Color_娘"));
+        Pieces.Add(new Piece("母", 4, 0, 1, 2, "Color_母"));
+        Pieces.Add(new Piece("手代", 0, 2, 1, 1, "Color_手代"));
+        Pieces.Add(new Piece("大番頭", 1, 2, 4, 1, "Color_大番頭"));
+        Pieces.Add(new Piece("兄嫁", 5, 2, 1, 1, "Color_兄嫁"));
+        Pieces.Add(new Piece("丁稚", 0, 3, 1, 1, "Color_丁稚"));
+        Pieces.Add(new Piece("女中", 1, 3, 2, 1, "Color_女中"));
+        Pieces.Add(new Piece("番頭", 3, 3, 2, 1, "Color_番頭"));
+        Pieces.Add(new Piece("丁稚", 5, 3, 1, 1, "Color_丁稚"));
+        Pieces.Add(new Piece("番犬", 0, 4, 1, 1, "Color_番犬"));
+        Pieces.Add(new Piece("祖父", 1, 4, 2, 1, "Color_祖父"));
+        Pieces.Add(new Piece("祖母", 3, 4, 2, 1, "Color_祖母"));
+        Pieces.Add(new Piece("丁稚", 5, 4, 1, 1, "Color_丁稚"));
+    }
+
+    private void SelectPiece(Piece p)
+    {
+        Selected = p;
+    }
+
+    private void MoveSelected(int dx, int dy)
+    {
+        if (Selected == null) return;
+
+        int newX = Selected.X + dx;
+        int newY = Selected.Y + dy;
+
+        if (CanMove(Selected, newX, newY))
+        {
+            Selected.X = newX;
+            Selected.Y = newY;
+
+            CheckClear();
+        }
+    }
+
+    // 外部(Y=5)と重なっているか
+    private static bool OverlapsOutside(Piece p)
+    {
+        int top = p.Y;
+        int bottom = p.Y + p.Height - 1;
+        return top <= 5 && bottom >= 5; // Y=5 を一部でも占有
+    }
+
+    private void CheckClear()
+    {
+        var outside = Pieces.Where(OverlapsOutside).ToList();
+        var daughter = Pieces.First(p => p.Name == "娘");
+
+        if (OverlapsOutside(daughter) && outside.All(p => ReferenceEquals(p, daughter)))
+        {
+            Message = "クリア！";
+        }
+        else
+        {
+            Message = "";
+        }
+    }
+
+    private bool CanMove(Piece p, int newX, int newY)
+    {
+        // 盤外
+        if (newX < 0 || newY < 0 || newX + p.Width > BoardWidth || newY + p.Height > BoardHeight)
+            return false;
+
+        // ==== 玄関の境界 Y=4 と Y=5 を跨ぐ時は列チェック ====
+        bool crossesDown = (p.Y + p.Height == 5) && (newY == p.Y + 1); // Y=4→5 に降りる
+        bool crossesUp = (p.Y == 5) && (newY == 4);                   // Y=5→4 に上がる
+
+        if (crossesDown || crossesUp)
+        {
+            for (int x = newX; x < newX + p.Width; x++)
+            {
+                // X=0,1 と X=4,5 に一部でも掛かったらアウト（通れるのは X=2,3 のみ）
+                if (x <= 1 || x >= 4) return false;
+            }
+        }
+    
+        // 衝突
+        foreach (var o in Pieces.Where(o => o != p))
+        {
+            if (!(newX + p.Width <= o.X || newX >= o.X + o.Width ||
+                  newY + p.Height <= o.Y || newY >= o.Y + o.Height))
+                return false;
+        }
+        return true;
+    }
+
+
+}
