@@ -1,6 +1,18 @@
-﻿:root {
-    --btn-size: 60px; /* 1ボタン */
-    --btn-gap: 60px; /* ← 1ボタン分 */
+﻿html, body {
+    overscroll-behavior: none; /* 下スワイプによるリロードを抑止 */
+    height: 100%;
+    margin: 0;
+    touch-action: none;        /* ページ全体でパン無効 */
+}
+
+body {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+:root {
+    --btn-size: 40px; /* 1ボタン */
+    --btn-gap: 40px; /* ← 1ボタン分 */
 }
 
 /* 全体 */
@@ -15,10 +27,11 @@
 /* 1セル = 80px*/
 .board {
     position: relative;
-    width: calc(6 * var(--cell)); /* 横6マス */
-    height: calc(6 * var(--cell) + var(--wall)); /* 縦6マス */
+    width: calc(var(--cell) * 6);
+    height: calc(var(--cell) * 6 + var(--wall));
     border: 2px solid black;
-    background: #eee; /* 薄いグレー */
+    background: #eee;
+    overscroll-behavior: contain; /* ← スクロールチェーンや更新を防ぐ */
 }
 
 /* 出口（外部行）…外部行自体を壁の太さ分だけ下げる */
@@ -66,7 +79,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 0px;
 }
 
     .controls button {
@@ -76,6 +89,10 @@
         margin: 3px;
         cursor: pointer;
         background: #d9dbfc;
+        user-select: none; /* テキスト選択禁止 */
+        -webkit-user-select: none; /* Safari対策 */
+        -ms-user-select: none; /* Edgeレガシー対策 */
+        touch-action: none; /* ← スクロールを無効化 */
     }
 
 
@@ -109,8 +126,14 @@
     justify-content: center;
     transform: scale(0.98); /* 少し小さく */
     transform-origin: top left; /* 左上を基準に縮小 */
+    user-select: none;         /* テキスト選択禁止 */
+    -webkit-user-select: none; /* Safari対策 */
+    -ms-user-select: none;     /* Edgeレガシー対策 */
+    touch-action: none;         /* ← スクロールを無効化 */
 }
-
+    .piece:active {
+        cursor: grabbing;          /* ドラッグ中の見た目 */
+    }
     .piece.selected {
         outline: 3px solid orange;
     }
@@ -120,7 +143,7 @@
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 64px;
+    font-size: 72px;
     font-weight: bold;
     color: #ff4081; /* 派手なピンク */
     text-shadow: 0 0 10px #fff, 0 0 20px #ff80ab, 0 0 30px #ff4081;

@@ -4,10 +4,21 @@
 
 <PageTitle>Sheltered Daughter</PageTitle>
 
-<h2>箱入り娘（Sheltered Daughter）</h2>
+<h2>箱入り娘</h2>
 <p>「娘だけ」を玄関から出してね！</p>
 
-<div class="game-container">
+@* タイマーとリセット *@
+<div class="info-panel">
+    <span>経過時間: @Elapsed 秒</span>
+    <button @onclick="ResetGame">リセット</button>
+</div>
+
+<div class="game-container"
+     @onmousemove="OnMouseMove"
+     @onmouseup="EndDrag"
+     @ontouchmove="OnTouchMove"
+     @ontouchend="EndDrag">
+
     @* 盤面 *@
     <div class="board">
         <div class="exit">玄関</div>
@@ -19,13 +30,21 @@
         {
             <div class="piece @(p.ColorClass) @(Selected == p ? "selected" : "")"
                  style="
-                            left:@(p.X* Cell)px;
-                            top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
-                            width:@(p.Width* Cell)px;
-                            height:@(p.Height* Cell)px;"
-                 @onclick="() => SelectPiece(p)">
+                    left:@(p.X* Cell)px;
+                    top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
+                    width:@(p.Width* Cell)px;
+                    height:@(p.Height* Cell)px;"
+                 @onclick="() => SelectPiece(p)"
+                 @onmousedown="(e) => StartDrag(p, e.ClientX, e.ClientY)"
+                 @ontouchstart="(e) => {
+                     if (e.Touches.Length > 0) {
+                         var t = e.Touches[0];
+                         StartDrag(p, t.ClientX, t.ClientY);
+                     }
+                 }">
                 @p.Name
             </div>
+
         }
     </div>
 
@@ -41,23 +60,22 @@
     </div>
 </div>
 
-@* タイマーとリセット *@
-<div class="info-panel">
-    <span>経過時間: @Elapsed 秒</span>
-    <button @onclick="ResetGame">リセット</button>
-</div>
 
 @if (!string.IsNullOrEmpty(Message))
 {
     <div class="clear-message">@Message</div>
 }
 
+<footer class="footer">
+    提供：ハカマタソフト X
+    <a href="https://x.com/masayahak_dev" target="_blank">@@masayahak_dev</a>
+</footer>
 
 @* サイズの定義をC#から取得 *@
 <style>
     :root {
-        --cell: @($"{Cell}px");
-        --wall: @($"{WallThick}px");
+        --cell: 50px;
+        --wall: 6px;
     }
 </style>
 
@@ -65,7 +83,7 @@
 @code {
 
     // サイズの定義
-    private const int Cell = 80;
+    private const int Cell = 50;
     private const int BoardWidth = 6;
     private const int BoardHeight = 6; // 外部を含む
     private const int WallThick = 6;   // 壁の厚さ（可視分）
@@ -123,6 +141,64 @@
 
     // 駒の選択
     private void SelectPiece(Piece p) => Selected = p;
+
+
+
+    // ---------------------------
+    // 駒移動 ドラッグ
+    // ---------------------------
+
+    // ドラッグ中の駒
+    private Piece? draggingPiece;
+    private int startX, startY;
+
+    private void StartDrag(Piece p, double clientX, double clientY)
+    {
+        Selected = p;
+        draggingPiece = p;
+        startX = (int)clientX;
+        startY = (int)clientY;
+    }
+
+    // ---- PC: マウス移動 ----
+    private void OnMouseMove(MouseEventArgs e)
+    {
+        if (draggingPiece == null) return;
+        HandleDrag((int)e.ClientX, (int)e.ClientY);
+    }
+
+    // ---- スマホ: タッチ移動 ----
+    private void OnTouchMove(TouchEventArgs e)
+    {
+        if (draggingPiece == null || e.Touches.Length == 0) return;
+        var touch = e.Touches[0];
+        HandleDrag((int)touch.ClientX, (int)touch.ClientY);
+    }
+
+    // ---- 共通処理 ----
+    private void HandleDrag(int currentX, int currentY)
+    {
+        int dx = 0, dy = 0;
+
+        if (Math.Abs(currentX - startX) > Cell / 2)
+        {
+            dx = (currentX > startX) ? 1 : -1;
+            startX = currentX; // 基準更新
+        }
+        if (Math.Abs(currentY - startY) > Cell / 2)
+        {
+            dy = (currentY > startY) ? 1 : -1;
+            startY = currentY;
+        }
+
+        if (dx != 0 || dy != 0)
+            MoveSelected(dx, dy);
+    }
+
+    private void EndDrag()
+    {
+        draggingPiece = null;
+    }
 
     // ---------------------------
     // 駒移動
@@ -193,6 +269,8 @@
     {
         Message = "🎉 クリア！ 🎉";
         timer?.Dispose(); // タイマー停止
+        timer = null;
+        StateHasChanged(); // 強制再描画
     }
 
     // ---------------------------
