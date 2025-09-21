@@ -7,7 +7,8 @@
         public int Y { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public string ColorClass { get; set; }  // ← 追加
+        // CSSの定義名を利用するので文字列
+        public string ColorClass { get; set; }
 
         public Piece(string name, int x, int y, int w, int h, string colorClass = "piece-default")
         {

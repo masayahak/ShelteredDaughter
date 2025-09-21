@@ -6,13 +6,55 @@
 }
 
 body {
+    background-color: #f0f0f0; /* 薄いグレー */
     padding-top: 20px;
     padding-bottom: 20px;
 }
 
 :root {
+    --cell: 50px; /* 駒のサイズ（１片） */
+    --wall: 6px;  /* 壁の厚み */
     --btn-size: 40px; /* 1ボタン */
     --btn-gap: 40px; /* ← 1ボタン分 */
+}
+
+/* ヘッダー */
+.title {
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.subtitle {
+    text-align: center;
+    margin-top: 5px;
+}
+
+/* 経過時間とリセット */
+.status {
+    text-align: center;
+    margin: 15px 0;
+}
+
+#reset-btn {
+    margin-left: 10px;
+    background-color: #dc3545; /* 赤 */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+    #reset-btn:hover {
+        background-color: #b52a37;
+    }
+
+/* フッター */
+footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9em;
+    color: #444;
 }
 
 /* 全体 */
@@ -24,13 +66,12 @@ body {
 }
 
 /* ゲーム版 */
-/* 1セル = 80px*/
 .board {
     position: relative;
     width: calc(var(--cell) * 6);
     height: calc(var(--cell) * 6 + var(--wall));
     border: 2px solid black;
-    background: #eee;
+    background-color: #aaa; /* 薄いグレー */
     overscroll-behavior: contain; /* ← スクロールチェーンや更新を防ぐ */
 }
 
@@ -42,8 +83,8 @@ body {
     left: calc(2 * var(--cell)); /* X=2 */
     top: calc(5 * var(--cell)); /* Y=5 */
     width: calc(2 * var(--cell)); /* 2マス分 */
-    height: calc(1 * var(--cell)); /* 1マス分 */
-    background: lightgreen;
+    height: calc(1 * var(--cell) + var(--wall)); /* 1マス分 */
+    background: #eee;
     opacity: 0.6;
     display: flex;
     align-items: center;
@@ -51,28 +92,29 @@ body {
     font-size: 20px;
     font-weight: bold;
     color: #333;
+    user-select: none; /* テキスト選択禁止 */
 }
 
-/* 仕切り線（壁）は常に見える位置に固定 */
-.divider {
+/* 左側の壁 */
+.divider-left {
     position: absolute;
-    z-index: 2; /* 駒より上にしてもOKだが、
-                             今回は外部行を下げたので 1 でも十分 */
-    pointer-events: none;
-    top: calc(5 * var(--cell)); /* Y=4 と Y=5 の境界 */
-    height: 6px; /* 壁の太さ */
+    top: calc(5 * var(--cell));
+    left: 0;
+    width: calc(2 * var(--cell));
+    height: var(--wall); /* 壁の太さ */
     background: black;
 }
 
-.divider-left {
-    left: 0;
-    width: calc(2 * var(--cell));
-}
-
+/* 右側の壁 */
 .divider-right {
+    position: absolute;
+    top: calc(5 * var(--cell));
     left: calc(4 * var(--cell));
     width: calc(2 * var(--cell));
+    height: var(--wall);
+    background: black;
 }
+
 
 /* 操作ボタン */
 .controls {
@@ -163,19 +205,6 @@ body {
         transform: translate(-50%, -50%) scale(1.1);
     }
 }
-
-/* 情報パネルを右上に固定配置 */
-.info-panel {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 20px;
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    justify-content: flex-end;
-}
-
 
 /* 特定駒の色分け */
 .Color_父 {

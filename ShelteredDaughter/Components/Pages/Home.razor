@@ -4,13 +4,14 @@
 
 <PageTitle>Sheltered Daughter</PageTitle>
 
-<h2>箱入り娘</h2>
-<p>「娘だけ」を玄関から出してね！</p>
+<header>
+    <h1 class="title">箱入り娘</h1>
+    <p class="subtitle">「娘だけ」を玄関から出してね！</p>
+</header>
 
-@* タイマーとリセット *@
-<div class="info-panel">
-    <span>経過時間: @Elapsed 秒</span>
-    <button @onclick="ResetGame">リセット</button>
+<div class="status">
+    <span id="elapsed-time">経過時間: @Elapsed 秒</span>
+    <button  id="reset-btn" @onclick="ResetGame">リセット</button>
 </div>
 
 <div class="game-container"
@@ -21,9 +22,9 @@
 
     @* 盤面 *@
     <div class="board">
+        <div class="divider-left"></div>
+        <div class="divider-right"></div>
         <div class="exit">玄関</div>
-        <div class="divider divider-left"></div>
-        <div class="divider divider-right"></div>
 
         @* 駒を配置 *@
         @foreach (var p in Pieces)
@@ -71,15 +72,6 @@
     <a href="https://x.com/masayahak_dev" target="_blank">@@masayahak_dev</a>
 </footer>
 
-@* サイズの定義をC#から取得 *@
-<style>
-    :root {
-        --cell: 50px;
-        --wall: 6px;
-    }
-</style>
-
-
 @code {
 
     // サイズの定義
@@ -90,7 +82,6 @@
 
     private List<Piece> Pieces = new();
     private Piece? Selected;
-    private string Message = "";
 
     // ---------------------------
     // 初期表示
@@ -180,13 +171,16 @@
     {
         int dx = 0, dy = 0;
 
+        // １セルの半分以上動かしたら、動かしたと認識する。
         if (Math.Abs(currentX - startX) > Cell / 2)
         {
+            // dx X方向の移動差分 +1は右に移動 -1は左に移動
             dx = (currentX > startX) ? 1 : -1;
             startX = currentX; // 基準更新
         }
         if (Math.Abs(currentY - startY) > Cell / 2)
         {
+            // dy Y方向の移動差分 +1は下に移動 -1は上に移動
             dy = (currentY > startY) ? 1 : -1;
             startY = currentY;
         }
@@ -203,12 +197,22 @@
     // ---------------------------
     // 駒移動
     // ---------------------------
+    private string Message = "";
+    private bool isCleared = false;   // ← 追加
+
     private void MoveSelected(int dx, int dy)
     {
         if (Selected == null) return;
 
-        // 警告や前回メッセージをクリア
-        Message = "";
+        // 引数は移動差分
+        // dx X方向の移動差分 +1は右に移動 -1は左に移動
+        // dy Y方向の移動差分 +1は下に移動 -1は上に移動
+        if (dx != -1 && dx != 0 && dx != 1) return;
+        if (dy != -1 && dy != 0 && dy != 1) return;
+
+        // 警告や前回メッセージは、クリア済みでない時だけクリア
+        if (!isCleared)
+            Message = "";
 
         int newX = Selected.X + dx;
         int newY = Selected.Y + dy;
@@ -268,6 +272,7 @@
     private void Clear()
     {
         Message = "🎉 クリア！ 🎉";
+        isCleared = true;
         timer?.Dispose(); // タイマー停止
         timer = null;
         StateHasChanged(); // 強制再描画
@@ -279,6 +284,7 @@
     private void ResetGame()
     {
         Elapsed = 0;
+        isCleared = false;
         Message = "";
         InitPieces();
         StartTimer();
