@@ -1,8 +1,9 @@
 ﻿:root {
-    --btn-size: 60px;
+    --btn-size: 60px; /* 1ボタン */
     --btn-gap: 60px; /* ← 1ボタン分 */
 }
 
+/* 全体 */
 .game-container {
     display: flex;
     flex-direction: column;
@@ -10,12 +11,54 @@
     gap: 30px;
 }
 
+/* ゲーム版 */
+/* 1セル = 80px*/
 .board {
     position: relative;
-    width: 480px;
-    height: 486px; /* 480 + 壁6px */
+    width: calc(6 * var(--cell)); /* 横6マス */
+    height: calc(6 * var(--cell) + var(--wall)); /* 縦6マス */
     border: 2px solid black;
     background: #eee; /* 薄いグレー */
+}
+
+/* 出口（外部行）…外部行自体を壁の太さ分だけ下げる */
+.exit {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    left: calc(2 * var(--cell)); /* X=2 */
+    top: calc(5 * var(--cell)); /* Y=5 */
+    width: calc(2 * var(--cell)); /* 2マス分 */
+    height: calc(1 * var(--cell)); /* 1マス分 */
+    background: lightgreen;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* 仕切り線（壁）は常に見える位置に固定 */
+.divider {
+    position: absolute;
+    z-index: 2; /* 駒より上にしてもOKだが、
+                             今回は外部行を下げたので 1 でも十分 */
+    pointer-events: none;
+    top: calc(5 * var(--cell)); /* Y=4 と Y=5 の境界 */
+    height: 6px; /* 壁の太さ */
+    background: black;
+}
+
+.divider-left {
+    left: 0;
+    width: calc(2 * var(--cell));
+}
+
+.divider-right {
+    left: calc(4 * var(--cell));
+    width: calc(2 * var(--cell));
 }
 
 /* 操作ボタン */
@@ -51,46 +94,6 @@
         border: none;
         background: transparent;
     }
-
-/* 出口（外部行）…外部行自体を壁の太さ分だけ下げる */
-.exit {
-    position: absolute;
-    z-index: 1;
-    pointer-events: none;
-    left: 160px; /* X=2 */
-    top: 400px; /* Y=5 */
-    width: 160px; /* 2マス分 */
-    height: 80px; /* 1マス分 */
-    background: lightgreen;
-    opacity: 0.6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-}
-
-/* 仕切り線（壁）は常に見える位置に固定 */
-.divider {
-    position: absolute;
-    z-index: 2; /* 駒より上にしてもOKだが、
-                             今回は外部行を下げたので 1 でも十分 */
-    pointer-events: none;
-    top: 400px; /* Y=4 と Y=5 の境界 */
-    height: 6px; /* 壁の太さ */
-    background: black;
-}
-
-.divider-left {
-    left: 0;
-    width: 160px;
-}
-
-.divider-right {
-    left: 320px;
-    width: 160px;
-}
 
 /* 駒：少しだけ縮小して外枠や壁と視覚的に重ならないように */
 .piece {
