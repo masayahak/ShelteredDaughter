@@ -1,9 +1,11 @@
 ﻿@page "/"
 @using ShelteredDaughter.Models
+@implements IDisposable
 
 <PageTitle>Sheltered Daughter</PageTitle>
 
 <div class="game-container">
+    <!-- 盤面 -->
     <div class="board">
         <div class="exit">玄関</div>
         <div class="divider divider-left"></div>
@@ -13,16 +15,17 @@
         {
             <div class="piece @(p.ColorClass) @(Selected == p ? "selected" : "")"
                  style="
-                        left:@(p.X* Cell)px;
-                        top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
-                        width:@(p.Width* Cell)px;
-                        height:@(p.Height* Cell)px;"
+                            left:@(p.X* Cell)px;
+                            top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
+                            width:@(p.Width* Cell)px;
+                            height:@(p.Height* Cell)px;"
                  @onclick="() => SelectPiece(p)">
                 @p.Name
             </div>
         }
     </div>
 
+    <!-- 操作ボタン -->
     <div class="controls">
         <div><button @onclick="() => MoveSelected(0, -1)">↑</button></div>
         <div class="controls-mid">
@@ -34,6 +37,12 @@
     </div>
 </div>
 
+<!-- タイマーとリセット -->
+<div class="info-panel">
+    <span>経過時間: @Elapsed 秒</span>
+    <button @onclick="ResetGame">リセット</button>
+</div>
+
 @if (!string.IsNullOrEmpty(Message))
 {
     <div class="clear-message">@Message</div>
@@ -43,15 +52,38 @@
     private const int Cell = 80;
     private const int BoardWidth = 6;
     private const int BoardHeight = 6; // 外部を含む
-    private const int WallThick = 6;   // ← 壁の可視分(ピクセル)
+    private const int WallThick = 6;   // 壁の厚さ（可視分）
 
     private List<Piece> Pieces = new();
     private Piece? Selected;
     private string Message = "";
 
+    private int Elapsed = 0;
+    private System.Threading.Timer? timer;
+
     protected override void OnInitialized()
     {
-        // 駒名, X, Y, 幅, 高さ, 色
+        StartTimer();
+        InitPieces();
+    }
+
+    private void StartTimer()
+    {
+        timer?.Dispose();
+        timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                Elapsed++;
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+
+    private void InitPieces()
+    {
+        Pieces.Clear();
+        // 駒名, X, Y, 幅, 高さ, 色クラス
         Pieces.Add(new Piece("父", 1, 0, 1, 2, "Color_父"));
         Pieces.Add(new Piece("娘", 2, 0, 2, 2, "Color_娘"));
         Pieces.Add(new Piece("母", 4, 0, 1, 2, "Color_母"));
@@ -68,14 +100,14 @@
         Pieces.Add(new Piece("丁稚", 5, 4, 1, 1, "Color_丁稚"));
     }
 
-    private void SelectPiece(Piece p)
-    {
-        Selected = p;
-    }
+    private void SelectPiece(Piece p) => Selected = p;
 
     private void MoveSelected(int dx, int dy)
     {
         if (Selected == null) return;
+
+        // 警告や前回メッセージをクリア
+        Message = "";
 
         int newX = Selected.X + dx;
         int newY = Selected.Y + dy;
@@ -84,9 +116,22 @@
         {
             Selected.X = newX;
             Selected.Y = newY;
-
             CheckClear();
         }
+    }
+
+    private void ResetGame()
+    {
+        Elapsed = 0;
+        Message = "";
+        InitPieces();
+        StartTimer();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
     }
 
     // 外部(Y=5)と重なっているか
@@ -104,34 +149,39 @@
 
         if (OverlapsOutside(daughter) && outside.All(p => ReferenceEquals(p, daughter)))
         {
-            Message = "クリア！";
-        }
-        else
-        {
-            Message = "";
+            Message = "🎉 クリア！ 🎉";
+            timer?.Dispose(); // タイマー停止
         }
     }
 
+    // 駒が動けるかチェック
     private bool CanMove(Piece p, int newX, int newY)
     {
         // 盤外
         if (newX < 0 || newY < 0 || newX + p.Width > BoardWidth || newY + p.Height > BoardHeight)
             return false;
 
-        // ==== 玄関の境界 Y=4 と Y=5 を跨ぐ時は列チェック ====
-        bool crossesDown = (p.Y + p.Height == 5) && (newY == p.Y + 1); // Y=4→5 に降りる
-        bool crossesUp = (p.Y == 5) && (newY == 4);                   // Y=5→4 に上がる
+        // ==== Y=4 と Y=5 の境界を跨ぐとき ====
+        bool crossesDown = (p.Y + p.Height == 5) && (newY == p.Y + 1); // Y=4→5
 
-        if (crossesDown || crossesUp)
+        if (crossesDown)
         {
+            // 娘以外は出られない
+            if (p.Name != "娘")
+            {
+                Message = "玄関を出てよいのは娘だけ";
+                return false;
+            }
+
+            // 娘でも X=2,3 の通路からしか出られない
             for (int x = newX; x < newX + p.Width; x++)
             {
-                // X=0,1 と X=4,5 に一部でも掛かったらアウト（通れるのは X=2,3 のみ）
-                if (x <= 1 || x >= 4) return false;
+                if (x <= 1 || x >= 4)
+                    return false;
             }
         }
-    
-        // 衝突
+
+        // 他駒との衝突
         foreach (var o in Pieces.Where(o => o != p))
         {
             if (!(newX + p.Width <= o.X || newX >= o.X + o.Width ||
@@ -140,6 +190,4 @@
         }
         return true;
     }
-
-
 }
