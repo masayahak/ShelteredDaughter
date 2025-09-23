@@ -5,36 +5,53 @@
 <PageTitle>Sheltered Daughter</PageTitle>
 
 <header>
-    <h1 class="title">箱入り娘</h1>
+    <h1 class="title">箱入り娘(大家族)</h1>
     <p class="subtitle">「娘だけ」を玄関から出してね！</p>
 </header>
 
 <div class="status">
+    @if (isCleared)
+    {
+        <span id="elapsed-time">🎉クリア🎉</span>
+    }
     <span id="elapsed-time">経過時間: @Elapsed 秒</span>
-    <button  id="reset-btn" @onclick="ResetGame">リセット</button>
+    <button id="reset-btn" @onclick="ResetGame">リセット</button>
 </div>
 
+@* --------------------------------------------------------
+   駒の移動（マウス操作やタッチ操作）時に、ポインタが駒から外れても
+   追随するために盤面で移動イベントを管理 
+   -------------------------------------------------------- *@
 <div class="game-container"
      @onmousemove="OnMouseMove"
      @onmouseup="EndDrag"
      @ontouchmove="OnTouchMove"
      @ontouchend="EndDrag">
 
-    @* 盤面 *@
-    <div class="board">
-        <div class="divider-left"></div>
-        <div class="divider-right"></div>
-        <div class="exit">玄関</div>
+    <div class="board" style="--rows:@Rows; --cols:@Cols; position:relative;">
+        @* 盤面セル *@
+        @for (int y = 0; y < Rows; y++)
+        {
+            for (int x = 0; x < Cols; x++)
+            {
+                int cell = Board[y, x];
+                <div class="cell @(cell==1 ? "wall" : cell==9 ? "exit" : "empty")"
+                     style="grid-column:@(x+1); grid-row:@(y+1);">
+                    @(cell == 9 ? "玄関" : "")
+                </div>
+            }
+        }
 
-        @* 駒を配置 *@
+        @* 駒（absolute配置） *@
         @foreach (var p in Pieces)
         {
             <div class="piece @(p.ColorClass) @(Selected == p ? "selected" : "")"
                  style="
-                    left:@(p.X* Cell)px;
-                    top:@(p.Y* Cell + (p.Y >= 5 ? WallThick : 0))px;
-                    width:@(p.Width* Cell)px;
-                    height:@(p.Height* Cell)px;"
+                    position:absolute;
+                    left:@(p.X * 50)px;
+                    top:@(p.Y * 50)px;
+                    width:@(p.Width * 50)px;
+                    height:@(p.Height * 50)px;"
                  @onclick="() => SelectPiece(p)"
                  @onmousedown="(e) => StartDrag(p, e.ClientX, e.ClientY)"
                  @ontouchstart="(e) => {
@@ -45,22 +62,10 @@
                  }">
                 @p.Name
             </div>
-
         }
     </div>
 
-    @* 操作ボタン *@
-    <div class="controls">
-        <div><button @onclick="() => MoveSelected(0, -1)">↑</button></div>
-        <div class="controls-mid">
-            <button @onclick="() => MoveSelected(-1, 0)">←</button>
-            <button class="spacer" disabled></button>
-            <button @onclick="() => MoveSelected(1, 0)">→</button>
-        </div>
-        <div><button @onclick="() => MoveSelected(0, 1)">↓</button></div>
-    </div>
 </div>
-
 
 @if (!string.IsNullOrEmpty(Message))
 {
@@ -72,29 +77,62 @@
     <a href="https://x.com/masayahak_dev" target="_blank">@@masayahak_dev</a>
 </footer>
 
+
 @code {
 
-    // サイズの定義
-    private const int Cell = 50;
-    private const int BoardWidth = 6;
-    private const int BoardHeight = 6; // 外部を含む
-    private const int WallThick = 6;   // 壁の厚さ（可視分）
+    // 盤面の定義
+    private int[,] Board = new int[8, 8]
+    {
+        // 盤面定義 (0=空, 1=壁, 9=出口)
+        {1,1,1,1,1,1,1,1},
+        {1,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,1},
+        {1,0,0,0,0,0,0,1},
+        {1,1,1,9,9,1,1,1},
+        {1,1,1,9,9,1,1,1},
+    };
+    private int Rows => Board.GetLength(0);
+    private int Cols => Board.GetLength(1);
 
+    // 駒の定義
     private List<Piece> Pieces = new();
-    private Piece? Selected;
+    private void InitPieces()
+    {
+        Pieces.Clear();
+        // 駒名、駒の左上のX座標、Y座標、幅、高さ、色のクラス名
+        Pieces.Add(new Piece("父",   2, 1, 1, 2, "Color_父"));
+        Pieces.Add(new Piece("娘",   3, 1, 2, 2, "Color_娘"));
+        Pieces.Add(new Piece("母",   5, 1, 1, 2, "Color_母"));
+        Pieces.Add(new Piece("手代", 1, 3, 1, 1, "Color_手代"));
+        Pieces.Add(new Piece("大番頭",2, 3, 4, 1, "Color_大番頭"));
+        Pieces.Add(new Piece("兄嫁", 6, 3, 1, 1, "Color_兄嫁"));
+        Pieces.Add(new Piece("丁稚", 1, 4, 1, 1, "Color_丁稚"));
+        Pieces.Add(new Piece("女中", 2, 4, 2, 1, "Color_女中"));
+        Pieces.Add(new Piece("番頭", 4, 4, 2, 1, "Color_番頭"));
+        Pieces.Add(new Piece("丁稚", 6, 4, 1, 1, "Color_丁稚"));
+        Pieces.Add(new Piece("番犬", 1, 5, 1, 1, "Color_番犬"));
+        Pieces.Add(new Piece("祖父", 2, 5, 2, 1, "Color_祖父"));
+        Pieces.Add(new Piece("祖母", 4, 5, 2, 1, "Color_祖母"));
+        Pieces.Add(new Piece("丁稚", 6, 5, 1, 1, "Color_丁稚"));
+    }
 
-    // ---------------------------
-    // 初期表示
-    // ---------------------------
+
+    //------------------------------------------------
+    // 初期処理
+    //------------------------------------------------
     protected override void OnInitialized()
     {
         StartTimer();
         InitPieces();
     }
 
-    // タイマー開始
+    // タイマー
     private System.Threading.Timer? timer;
     private int Elapsed = 0;
+    private string Message = "";
+    private bool isCleared = false;
 
     private void StartTimer()
     {
@@ -109,178 +147,6 @@
         }, null, 1000, 1000);
     }
 
-    // 駒の初期配置
-    private void InitPieces()
-    {
-        Pieces.Clear();
-        // 駒名, X, Y, 幅, 高さ, 色クラス
-        Pieces.Add(new Piece("父", 1, 0, 1, 2, "Color_父"));
-        Pieces.Add(new Piece("娘", 2, 0, 2, 2, "Color_娘"));
-        Pieces.Add(new Piece("母", 4, 0, 1, 2, "Color_母"));
-        Pieces.Add(new Piece("手代", 0, 2, 1, 1, "Color_手代"));
-        Pieces.Add(new Piece("大番頭", 1, 2, 4, 1, "Color_大番頭"));
-        Pieces.Add(new Piece("兄嫁", 5, 2, 1, 1, "Color_兄嫁"));
-        Pieces.Add(new Piece("丁稚", 0, 3, 1, 1, "Color_丁稚"));
-        Pieces.Add(new Piece("女中", 1, 3, 2, 1, "Color_女中"));
-        Pieces.Add(new Piece("番頭", 3, 3, 2, 1, "Color_番頭"));
-        Pieces.Add(new Piece("丁稚", 5, 3, 1, 1, "Color_丁稚"));
-        Pieces.Add(new Piece("番犬", 0, 4, 1, 1, "Color_番犬"));
-        Pieces.Add(new Piece("祖父", 1, 4, 2, 1, "Color_祖父"));
-        Pieces.Add(new Piece("祖母", 3, 4, 2, 1, "Color_祖母"));
-        Pieces.Add(new Piece("丁稚", 5, 4, 1, 1, "Color_丁稚"));
-    }
-
-    // 駒の選択
-    private void SelectPiece(Piece p) => Selected = p;
-
-
-
-    // ---------------------------
-    // 駒移動 ドラッグ
-    // ---------------------------
-
-    // ドラッグ中の駒
-    private Piece? draggingPiece;
-    private int startX, startY;
-
-    private void StartDrag(Piece p, double clientX, double clientY)
-    {
-        Selected = p;
-        draggingPiece = p;
-        startX = (int)clientX;
-        startY = (int)clientY;
-    }
-
-    // ---- PC: マウス移動 ----
-    private void OnMouseMove(MouseEventArgs e)
-    {
-        if (draggingPiece == null) return;
-        HandleDrag((int)e.ClientX, (int)e.ClientY);
-    }
-
-    // ---- スマホ: タッチ移動 ----
-    private void OnTouchMove(TouchEventArgs e)
-    {
-        if (draggingPiece == null || e.Touches.Length == 0) return;
-        var touch = e.Touches[0];
-        HandleDrag((int)touch.ClientX, (int)touch.ClientY);
-    }
-
-    // ---- 共通処理 ----
-    private void HandleDrag(int currentX, int currentY)
-    {
-        int dx = 0, dy = 0;
-
-        // １セルの半分以上動かしたら、動かしたと認識する。
-        if (Math.Abs(currentX - startX) > Cell / 2)
-        {
-            // dx X方向の移動差分 +1は右に移動 -1は左に移動
-            dx = (currentX > startX) ? 1 : -1;
-            startX = currentX; // 基準更新
-        }
-        if (Math.Abs(currentY - startY) > Cell / 2)
-        {
-            // dy Y方向の移動差分 +1は下に移動 -1は上に移動
-            dy = (currentY > startY) ? 1 : -1;
-            startY = currentY;
-        }
-
-        if (dx != 0 || dy != 0)
-            MoveSelected(dx, dy);
-    }
-
-    private void EndDrag()
-    {
-        draggingPiece = null;
-    }
-
-    // ---------------------------
-    // 駒移動
-    // ---------------------------
-    private string Message = "";
-    private bool isCleared = false;   // ← 追加
-
-    private void MoveSelected(int dx, int dy)
-    {
-        if (Selected == null) return;
-
-        // 引数は移動差分
-        // dx X方向の移動差分 +1は右に移動 -1は左に移動
-        // dy Y方向の移動差分 +1は下に移動 -1は上に移動
-        if (dx != -1 && dx != 0 && dx != 1) return;
-        if (dy != -1 && dy != 0 && dy != 1) return;
-
-        // 警告や前回メッセージは、クリア済みでない時だけクリア
-        if (!isCleared)
-            Message = "";
-
-        int newX = Selected.X + dx;
-        int newY = Selected.Y + dy;
-
-        // 移動できるか？
-        if (CanMove(Selected, newX, newY))
-        {
-            Selected.X = newX;
-            Selected.Y = newY;
-        }
-    }
-
-    // 駒が動けるかチェック
-    private bool CanMove(Piece p, int newX, int newY)
-    {
-        //  ----- 盤外 -----
-        if (newX < 0 || newY < 0)
-            return false;
-
-        if (newX + p.Width > BoardWidth || newY + p.Height > BoardHeight)
-            return false;
-
-        // ----- 壁から出ようとしているか？ -----
-        bool crossesDown = (p.Y + p.Height == 5) && (newY + p.Height == 6);
-
-        if (crossesDown)
-        {
-            // 駒全体が X=2,3 の範囲に収まっているか？
-            if (newX < 2 || newX + p.Width > 4)
-                return false;
-
-            // 娘以外は出られない
-            if (p.Name != "娘")
-            {
-                Message = "玄関を出てよいのは娘だけ";
-                return false;
-            }
-            else
-            {
-                Clear();
-            }
-        }
-
-        // ----- 他駒との衝突 -----
-        foreach (var o in Pieces.Where(o => o != p))
-        {
-            bool overlapX = newX < o.X + o.Width && newX + p.Width > o.X;
-            bool overlapY = newY < o.Y + o.Height && newY + p.Height > o.Y;
-
-            if (overlapX && overlapY)
-                return false; // 衝突
-        }
-
-        return true;
-    }
-
-    private void Clear()
-    {
-        Message = "🎉 クリア！ 🎉";
-        isCleared = true;
-        timer?.Dispose(); // タイマー停止
-        timer = null;
-        StateHasChanged(); // 強制再描画
-    }
-
-    // ---------------------------
-    // やり直し
-    // ---------------------------
     private void ResetGame()
     {
         Elapsed = 0;
@@ -294,6 +160,132 @@
     public void Dispose()
     {
         timer?.Dispose();
+    }
+
+    //------------------------------------------------
+    // 駒の選択と制御
+    //------------------------------------------------
+
+    // 駒の選択
+    private Piece? Selected;
+    private void SelectPiece(Piece p) => Selected = p;
+
+    // ドラッグ操作
+    private Piece? draggingPiece;
+    private int startX, startY;
+
+    private void StartDrag(Piece p, double clientX, double clientY)
+    {
+        Selected = p;
+        draggingPiece = p;
+        startX = (int)clientX;
+        startY = (int)clientY;
+    }
+
+    private void OnMouseMove(MouseEventArgs e)
+    {
+        if (draggingPiece == null) return;
+        HandleDrag((int)e.ClientX, (int)e.ClientY);
+    }
+
+    private void OnTouchMove(TouchEventArgs e)
+    {
+        if (draggingPiece == null || e.Touches.Length == 0) return;
+        var touch = e.Touches[0];
+        HandleDrag((int)touch.ClientX, (int)touch.ClientY);
+    }
+
+    private void HandleDrag(int currentX, int currentY)
+    {
+        // ドラッグして一定距離以上動かしたら、動かしたとみなす。
+        int dx = 0, dy = 0;
+        if (Math.Abs(currentX - startX) > 25)
+        {
+            dx = (currentX > startX) ? 1 : -1;
+            startX = currentX;
+        }
+        if (Math.Abs(currentY - startY) > 25)
+        {
+            dy = (currentY > startY) ? 1 : -1;
+            startY = currentY;
+        }
+        if (dx != 0 || dy != 0)
+            MoveSelected(dx, dy);
+    }
+
+    private void EndDrag()
+    {
+        draggingPiece = null;
+    }
+
+    // 移動処理
+    private void MoveSelected(int dx, int dy)
+    {
+        if (Selected == null) return;
+
+        if (!isCleared) Message = "";
+
+        int newX = Selected.X + dx;
+        int newY = Selected.Y + dy;
+
+        if (CanMove(Selected, newX, newY))
+        {
+            Selected.X = newX;
+            Selected.Y = newY;
+        }
+    }
+
+    //------------------------------------------------
+    // 移動して良いか判定する
+    //------------------------------------------------
+    private bool CanMove(Piece p, int newX, int newY)
+    {
+        // ----- 盤外は禁止 -----
+        if (newX < 0 || newX + p.Width > Cols) return false;
+        if (newY < 0 || newY + p.Height > Rows) return false;
+
+        // ----- 壁セルとの衝突 -----
+        bool blocked = Enumerable.Range(newY, p.Height).Any(yy =>
+            Enumerable.Range(newX, p.Width).Any(xx =>
+                Board[yy, xx] == 1));
+        if (blocked) return false;
+
+        // 出口判定（娘だけOK）
+        bool inExit = Enumerable.Range(newY, p.Height).Any(yy =>
+            Enumerable.Range(newX, p.Width).Any(xx =>
+                Board[yy, xx] == 9));
+        if (inExit)
+        {
+            if (p.Name == "娘")
+            {
+                Clear();
+                return true;
+            }
+            else
+            {
+                Message = "玄関を出てよいのは娘だけ";
+                return false;
+            }
+        }
+
+        // 他駒との衝突
+        foreach (var o in Pieces.Where(o => o != p))
+        {
+            bool overlapX = newX < o.X + o.Width && newX + p.Width > o.X;
+            bool overlapY = newY < o.Y + o.Height && newY + p.Height > o.Y;
+            if (overlapX && overlapY) return false;
+        }
+
+        return true;
+    }
+
+    private void Clear()
+    {
+        Message = "🎉クリア🎉";
+        isCleared = true;
+        timer?.Dispose();
+        timer = null;
+        StateHasChanged();
     }
 
 }
