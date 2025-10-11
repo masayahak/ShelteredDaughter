@@ -246,3 +246,29 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+
+.developed {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-top: 3rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+    .developed span {
+        margin-right: 0.4rem;
+    }
+
+    .developed a {
+        color: #3a78f2;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+        .developed a:hover {
+            color: #77aaff;
+            text-decoration: underline;
+        }
